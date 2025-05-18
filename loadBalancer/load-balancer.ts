@@ -59,6 +59,18 @@ export class LBServer implements ILBServer {
 
         this.hc = new HealthCheck(this.backendServers, this.healthyServers);
 
+        // Initialize server health metric values
+        this.backendServers.forEach(server => {
+            serverHealth.set({ target: server.url }, server.getStatus() === BEServerHealth.HEALTHY ? 1 : 0);
+        });
+
+        // Periodically update server health metrics every 5 seconds
+        setInterval(() => {
+            this.backendServers.forEach(server => {
+                serverHealth.set({ target: server.url }, server.getStatus() === BEServerHealth.HEALTHY ? 1 : 0);
+            });
+        }, 5000);
+
         const app = this.createExpressApp();
         this.server = app.listen(this.PORT, () => {
             console.log('LB Server listening on port ' + this.PORT);
@@ -75,8 +87,6 @@ export class LBServer implements ILBServer {
 
         this.hc.performHealthCheckOnAllServers();
         this.hc.startHealthCheck();
-
-        this.startMetricsServer(); // [METRICS]
     }
 
     private createExpressApp() {
@@ -85,74 +95,53 @@ export class LBServer implements ILBServer {
         app.use(express.json());
 
         app.get('/', async (req: express.Request, res: express.Response) => {
-    if (this.healthyServers.length === 0) {
-        return res.sendStatus(500);
-    }
+            if (this.healthyServers.length === 0) {
+                return res.sendStatus(500);
+            }
 
-    let backendServer: IBackendServerDetails | undefined;
+            let backendServer: IBackendServerDetails | undefined;
 
-    try {
-        backendServer = this.getBackendServer();
-        console.log(`\t[BEStart]  -  ${backendServer.url}`);
-        
-        const response = await BEHttpClient.get(backendServer.url, {
-            "axios-retry": {
-                retries: CONFIG.be_retries,
-                retryDelay: (retryCount) => retryCount * CONFIG.be_retry_delay,
-                onRetry: (retryCount, error, requestConfig) => {
-                    console.log(`\t\t\t[BERetry]  -  retrying after delay ${backendServer!.url}`);
+            try {
+                backendServer = this.getBackendServer();
+                console.log(`\t[BEStart]  -  ${backendServer.url}`);
+                
+                const response = await BEHttpClient.get(backendServer.url, {
+                    "axios-retry": {
+                        retries: CONFIG.be_retries,
+                        retryDelay: (retryCount) => retryCount * CONFIG.be_retry_delay,
+                        onRetry: (retryCount, error, requestConfig) => {
+                            console.log(`\t\t\t[BERetry]  -  retrying after delay ${backendServer!.url}`);
 
-                    if (error.code === 'ECONNREFUSED') {
-                        this.hc.performHealthCheck(backendServer!);
-                    } else {
-                        console.log(`${backendServer!.url} - retryCount=${retryCount} - error=${error}`);
+                            if (error.code === 'ECONNREFUSED') {
+                                this.hc.performHealthCheck(backendServer!);
+                            } else {
+                                console.log(`${backendServer!.url} - retryCount=${retryCount} - error=${error}`);
+                            }
+
+                            backendServer = this.getBackendServer();
+                            requestConfig.url = backendServer.url;
+                        },
                     }
+                });
 
-                    backendServer = this.getBackendServer();
-                    requestConfig.url = backendServer.url;
-                },
+                console.log(`\t[BESuccess]  -  ${backendServer.url}`);
+                backendServer.incrementRequestsServedCount();
+                return res.status(200).send(response.data);
+            }
+            catch (error) {
+                console.log(`\t[BEError]  -  ${backendServer?.url ?? 'getBackendServer'}`);
+                console.error(error);
+                return res.sendStatus(500);
             }
         });
 
-        console.log(`\t[BESuccess]  -  ${backendServer.url}`);
-        backendServer.incrementRequestsServedCount();
-        return res.status(200).send(response.data);
-    }
-    catch (error) {
-        console.log(`\t[BEError]  -  ${backendServer?.url ?? 'getBackendServer'}`);
-        console.error(error);
-        return res.sendStatus(500);
-    }
-});
-
-
-        return app;
-    }
-
-    private startMetricsServer(): void { // [METRICS]
-        const app = express();
-        const METRICS_PORT = 9090;
-
+        // Metrics endpoint on the same port as LB server
         app.get('/metrics', async (_req, res) => {
             res.set('Content-Type', register.contentType);
             res.end(await getMetrics());
         });
 
-        app.listen(METRICS_PORT, () => {
-            console.log(`✅ Prometheus metrics available at http://localhost:${METRICS_PORT}/metrics`);
-        });
-
-        // Update initial server health status
-        this.backendServers.forEach(server => {
-            serverHealth.set({ target: server.url }, server.getStatus() === BEServerHealth.HEALTHY ? 1 : 0);
-        });
-
-        // Periodically update health metrics
-        setInterval(() => {
-            this.backendServers.forEach(server => {
-                serverHealth.set({ target: server.url }, server.getStatus() === BEServerHealth.HEALTHY ? 1 : 0);
-            });
-        }, 5000); // every 5s
+        return app;
     }
 
     public getLBServer(): Server<typeof IncomingMessage, typeof ServerResponse> {

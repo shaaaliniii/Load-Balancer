@@ -1,5 +1,5 @@
 {
-    "lbPORT": 80,
+    "lbPORT": 8000,
     "_lbAlgo": "rr",
     "be_servers": [
         {
