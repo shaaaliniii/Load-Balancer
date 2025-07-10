@@ -90,6 +90,14 @@ The project uses a `config.json` file for configuration:
 - **enableSelfHealing**: Flag to enable or disable self-healing.
 - **_test_only_chances_of_healing_server**: Self-healing randomness (0 disables randomness, 1 makes healing unlikely).
 
+## Results
+<img width="1919" height="848" alt="file_2025-05-18_21 30 37" src="https://github.com/user-attachments/assets/890148f7-d497-4826-80b3-14d97b687d9c" />
+<img width="1919" height="858" alt="file_2025-05-18_21 31 13" src="https://github.com/user-attachments/assets/8e3581a2-8cc3-409e-bbd9-48c18926bbbc" />
+<img width="1480" height="640" alt="file_2025-05-18_21 31 35" src="https://github.com/user-attachments/assets/cd7b9374-a09a-4a2f-b1da-4ad756eaa951" />
+<img width="1048" height="292" alt="file_2025-05-18_21 32 49" src="https://github.com/user-attachments/assets/59bd72f4-c83e-46d8-92af-9b8ce4221b79" />
+<img width="1299" height="266" alt="file_2025-05-18_21 33 12" src="https://github.com/user-attachments/assets/77f11c4b-649c-40cc-94c3-e3568d2eeab4" />
+<img width="1418" height="221" alt="file_2025-05-18_21 34 07" src="https://github.com/user-attachments/assets/dbadc80d-e7cc-4c37-afc6-0b54a643c2f4" />
+
 ## License
 
 This project is licensed under the MIT License.
