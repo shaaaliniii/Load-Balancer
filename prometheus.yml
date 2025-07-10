@@ -4,8 +4,8 @@ global:
 scrape_configs:
   - job_name: 'load_balancer'
     static_configs:
-      - targets: ['192.168.0.103:8000']
+      - targets: ['172.16.205.12:8000']
 
   - job_name: 'backends'
     static_configs:
-      - targets: ['192.168.0.103:8081', '192.168.0.103:8082', '192.168.0.103:8083']
+      - targets: ['172.16.205.12:8081', '172.16.205.12:8082', '172.16.205.12:8083']
